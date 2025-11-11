@@ -447,7 +447,10 @@
   <footer>HS Operações © 2025 - Recebimento de Nota Fiscal</footer>
 
   <script>
-    // Licença Dynamsoft (a nova que você me passou)
+    // URL do seu App Web (API)
+    const URL_API = "https://script.google.com/macros/s/AKfycbzQbg5-DYpRjRQcTlh5jaHf_uqdWksTB4QqyenKFuLgSJkpMV9Lgp98DYvSdAetF7zc/exec";
+
+    // Licença Dynamsoft
     Dynamsoft.DBR.BarcodeScanner.license =
       "DLS2eyJoYW5kc2hha2VDb2RlIjoiMTA0Nzg0MDQxLU1UQTBOemcwTURReExYZGxZaTFVY21saGJGQnliMm8iLCJtYWluU2VydmVyVVJMIjoiaHR0cHM6Ly9tZGxzLmR5bmFtc29mdG9ubGluZS5jb20iLCJvcmdhbml6YXRpb25JRCI6IjEwNDc4NDA0MSIsInN0YW5kYnlTZXJ2ZXJVUkwiOiJodHRwczovL3NkbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsImNoZWNrQ29kZSI6LTg1Njg0OTg3NX0";
 
@@ -511,9 +514,9 @@
       itensAtuais = [];
     }
 
-    // --- CONSULTA DE NF (FRONT → BACK) ---
+    // --- CONSULTA DE NF VIA FETCH ---
 
-    function consultarNotaNF() {
+    async function consultarNotaNF() {
       const erro = document.getElementById('erro-nf');
       const loading = document.getElementById('loading-nf');
       const chaveInput = document.getElementById('chave-nf');
@@ -536,20 +539,25 @@
 
       loading.classList.remove('hidden');
 
-      // Chama o backend Apps Script: consultarItensNF(filial, chave)
-      google.script.run
-        .withSuccessHandler(respostaNF)
-        .withFailureHandler(function(err) {
-          loading.classList.add('hidden');
-          erro.textContent = 'Erro ao comunicar com o servidor: ' + (err.message || err);
-        })
-        .consultarItensNF(filialAtual, chave);
+      try {
+        const url = `${URL_API}?api=consultarItensNF&filial=${encodeURIComponent(filialAtual)}&chave=${encodeURIComponent(chave)}`;
+        const resp = await fetch(url, { method: 'GET' });
+
+        if (!resp.ok) {
+          throw new Error('HTTP ' + resp.status);
+        }
+
+        const data = await resp.json();
+        respostaNF(data);
+      } catch (err) {
+        erro.textContent = 'Erro ao comunicar com o servidor: ' + (err.message || err);
+      } finally {
+        loading.classList.add('hidden');
+      }
     }
 
     function respostaNF(res) {
       const erro = document.getElementById('erro-nf');
-      const loading = document.getElementById('loading-nf');
-      loading.classList.add('hidden');
 
       if (!res) {
         erro.textContent = 'Resposta vazia do servidor.';
@@ -693,7 +701,6 @@
       const item = itensAtuais[index];
       if (!item) return;
 
-      // Se clicar de novo no mesmo status, volta pra OK
       if (item.status === novoStatus) {
         item.status = 'OK';
       } else {
@@ -753,9 +760,7 @@
           await scannerInstance.destroyContext();
           scannerInstance = null;
         }
-      } catch (e) {
-        // ignora, só garante que some
-      }
+      } catch (e) {}
       scannerDiv.style.display = "none";
     }
 
