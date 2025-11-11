@@ -699,7 +699,8 @@
           if (item.quantidadeNF && v > item.quantidadeNF) v = item.quantidadeNF;
           item.qtdDiverg = v;
           this.value = v;
-          atualizarBotaoEnviar();
+          // re-renderiza pra atualizar badge / botão
+          renderizarItens();
         };
 
         divDiverg.appendChild(inputQtd);
@@ -774,7 +775,13 @@
       const item = itensAtuais[index];
       if (!item) return;
 
-      // Se clicar no mesmo status, volta para OK
+      // Se quantidade divergente for 0, não deixa marcar
+      if (!item.qtdDiverg || item.qtdDiverg <= 0) {
+        alert('Informe a quantidade divergente antes de marcar FALTANDO ou PASSANDO.');
+        return;
+      }
+
+      // Se clicar de novo no mesmo status, volta pra OK
       if (item.status === novoStatus) {
         item.status = 'OK';
       } else {
@@ -831,7 +838,7 @@
       try {
         const resp = await fetch(URL_API, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          // sem headers pra não gerar preflight CORS
           body: JSON.stringify(payload)
         });
         const data = await resp.json();
