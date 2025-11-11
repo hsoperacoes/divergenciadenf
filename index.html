@@ -241,6 +241,22 @@
       font-weight: 600;
     }
 
+    .item-diverg {
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #e5e7eb;
+    }
+
+    .item-diverg input {
+      width: 80px;
+      padding: 4px 6px;
+      font-size: 12px;
+      margin-bottom: 0;
+    }
+
     .item-status {
       display: flex;
       align-items: center;
@@ -428,6 +444,11 @@
         </div>
 
         <div id="lista-itens" class="lista-itens hidden"></div>
+
+        <button id="btn-enviar-div" class="btn-full hidden" onclick="enviarDivergenciasNF()">
+          <i class="fas fa-paper-plane"></i> Enviar Divergências
+        </button>
+        <div id="msg-divergencia" class="loading hidden"></div>
       </div>
     </div>
   </div>
@@ -466,6 +487,8 @@
     let filialAtual = null;
     let scannerInstance = null;
     let itensAtuais = [];
+    let cabecalhoAtual = null;
+    let chaveAtual = "";
 
     // --- LOGIN / LOGOUT ---
 
@@ -511,7 +534,12 @@
       document.getElementById('lista-itens').innerHTML = '';
       document.getElementById('resumo-itens').textContent = '';
 
+      document.getElementById('btn-enviar-div').classList.add('hidden');
+      document.getElementById('msg-divergencia').classList.add('hidden');
+
       itensAtuais = [];
+      cabecalhoAtual = null;
+      chaveAtual = "";
     }
 
     // --- CONSULTA DE NF VIA FETCH ---
@@ -526,6 +554,12 @@
       document.getElementById('resumo-nf').classList.add('hidden');
       document.getElementById('lista-itens').classList.add('hidden');
       document.getElementById('titulo-itens').classList.add('hidden');
+      document.getElementById('btn-enviar-div').classList.add('hidden');
+      document.getElementById('msg-divergencia').classList.add('hidden');
+
+      itensAtuais = [];
+      cabecalhoAtual = null;
+      chaveAtual = "";
 
       if (!filialAtual) {
         erro.textContent = 'Faça login com o código da filial antes de consultar.';
@@ -548,6 +582,7 @@
         }
 
         const data = await resp.json();
+        chaveAtual = chave;
         respostaNF(data);
       } catch (err) {
         erro.textContent = 'Erro ao comunicar com o servidor: ' + (err.message || err);
@@ -573,6 +608,7 @@
 
       const cab = res.cabecalho || {};
       const itens = res.itens || [];
+      cabecalhoAtual = cab;
 
       // Resumo da NF
       const resumoDiv = document.getElementById('resumo-nf');
@@ -592,7 +628,8 @@
         codigo: item.codigo || item.codigoProduto || '',
         cor: item.cor || item.corProduto || '',
         tamanho: item.tamanho || '',
-        quantidade: item.quantidade || 0,
+        quantidadeNF: Number(item.quantidade || 0),
+        qtdDiverg: 0,
         status: 'OK'
       }));
 
@@ -603,6 +640,7 @@
       const listaDiv = document.getElementById('lista-itens');
       const tituloItens = document.getElementById('titulo-itens');
       const resumoItensSpan = document.getElementById('resumo-itens');
+      const btnEnviar = document.getElementById('btn-enviar-div');
 
       listaDiv.innerHTML = '';
 
@@ -610,15 +648,16 @@
         tituloItens.classList.add('hidden');
         listaDiv.classList.add('hidden');
         resumoItensSpan.textContent = '';
+        btnEnviar.classList.add('hidden');
         return;
       }
 
       const total = itensAtuais.length;
-      const faltando = itensAtuais.filter(i => i.status === 'FALTANDO').length;
-      const passando = itensAtuais.filter(i => i.status === 'PASSANDO').length;
+      const faltando = itensAtuais.filter(i => i.status === 'FALTANDO' && i.qtdDiverg > 0).length;
+      const passando = itensAtuais.filter(i => i.status === 'PASSANDO' && i.qtdDiverg > 0).length;
 
       resumoItensSpan.textContent =
-        `Total: ${total} | Faltando: ${faltando} | Passando: ${passando}`;
+        `Total itens: ${total} | Itens com divergência - Faltando: ${faltando} | Passando: ${passando}`;
 
       itensAtuais.forEach((item, idx) => {
         const card = document.createElement('div');
@@ -639,11 +678,31 @@
 
         const qtdSpan = document.createElement('span');
         qtdSpan.className = 'item-qtd';
-        qtdSpan.textContent = `Qtd: ${item.quantidade}`;
+        qtdSpan.textContent = `Qtd NF: ${item.quantidadeNF}`;
 
         header.appendChild(refSpan);
         header.appendChild(tamanhoSpan);
         header.appendChild(qtdSpan);
+
+        const divDiverg = document.createElement('div');
+        divDiverg.className = 'item-diverg';
+        divDiverg.innerHTML = 'Qtd divergência: ';
+
+        const inputQtd = document.createElement('input');
+        inputQtd.type = 'number';
+        inputQtd.min = '0';
+        inputQtd.max = String(item.quantidadeNF || 9999);
+        inputQtd.value = item.qtdDiverg || 0;
+        inputQtd.onchange = function() {
+          let v = parseInt(this.value, 10);
+          if (isNaN(v) || v < 0) v = 0;
+          if (item.quantidadeNF && v > item.quantidadeNF) v = item.quantidadeNF;
+          item.qtdDiverg = v;
+          this.value = v;
+          atualizarBotaoEnviar();
+        };
+
+        divDiverg.appendChild(inputQtd);
 
         const statusLinha = document.createElement('div');
         statusLinha.className = 'item-status';
@@ -651,7 +710,7 @@
         const badge = document.createElement('span');
         badge.className = 'status-badge';
 
-        if (item.status === 'OK') {
+        if (item.status === 'OK' || item.qtdDiverg === 0) {
           badge.classList.add('status-ok');
           badge.textContent = 'STATUS: OK';
         } else if (item.status === 'FALTANDO') {
@@ -688,6 +747,7 @@
         statusLinha.appendChild(btns);
 
         card.appendChild(header);
+        card.appendChild(divDiverg);
         card.appendChild(statusLinha);
 
         listaDiv.appendChild(card);
@@ -695,18 +755,95 @@
 
       tituloItens.classList.remove('hidden');
       listaDiv.classList.remove('hidden');
+      atualizarBotaoEnviar();
+    }
+
+    function atualizarBotaoEnviar() {
+      const btnEnviar = document.getElementById('btn-enviar-div');
+      const temDiverg = itensAtuais.some(i =>
+        i.qtdDiverg > 0 && (i.status === 'FALTANDO' || i.status === 'PASSANDO')
+      );
+      if (temDiverg) {
+        btnEnviar.classList.remove('hidden');
+      } else {
+        btnEnviar.classList.add('hidden');
+      }
     }
 
     function alterarStatusItem(index, novoStatus) {
       const item = itensAtuais[index];
       if (!item) return;
 
+      // Se clicar no mesmo status, volta para OK
       if (item.status === novoStatus) {
         item.status = 'OK';
       } else {
         item.status = novoStatus;
       }
       renderizarItens();
+    }
+
+    // --- ENVIO DE DIVERGÊNCIAS ---
+
+    async function enviarDivergenciasNF() {
+      const erro = document.getElementById('erro-nf');
+      const msg = document.getElementById('msg-divergencia');
+      erro.textContent = '';
+
+      if (!filialAtual) {
+        erro.textContent = 'Faça login novamente na filial.';
+        return;
+      }
+      if (!cabecalhoAtual) {
+        erro.textContent = 'Nenhuma nota carregada.';
+        return;
+      }
+
+      const selecionados = itensAtuais.filter(i =>
+        i.qtdDiverg > 0 && (i.status === 'FALTANDO' || i.status === 'PASSANDO')
+      );
+
+      if (selecionados.length === 0) {
+        erro.textContent = 'Marque algum item como FALTANDO ou PASSANDO e informe a quantidade.';
+        return;
+      }
+
+      msg.textContent = 'Enviando divergências...';
+      msg.classList.remove('hidden');
+
+      const payload = {
+        api: 'registrarDivergencias',
+        filialCodigo: filialAtual,
+        filialNome: nomesFiliais[filialAtual] || '',
+        numeroNF: cabecalhoAtual.numeroNF || '',
+        chaveAcesso: cabecalhoAtual.chaveAcesso || chaveAtual || '',
+        transportadora: 'BRASPRESS',
+        dataRecebimento: new Date().toISOString(),
+        itens: selecionados.map(i => ({
+          codigo: i.codigo,
+          cor: i.cor,
+          tamanho: i.tamanho,
+          quantidade: i.qtdDiverg,
+          status: i.status
+        }))
+      };
+
+      try {
+        const resp = await fetch(URL_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (!data.success) {
+          throw new Error(data.message || 'Falha ao registrar divergências.');
+        }
+        alert('Divergências registradas com sucesso!');
+      } catch (err) {
+        erro.textContent = 'Erro ao enviar divergências: ' + (err.message || err);
+      } finally {
+        msg.classList.add('hidden');
+      }
     }
 
     // --- LEITOR DYNAMSOFT ---
