@@ -1,1 +1,781 @@
-# divergenciadenf
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recebimento de Nota Fiscal - HS</title>
+
+  <!-- Ícones -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- Dynamsoft Barcode Reader -->
+  <script src="https://cdn.jsdelivr.net/npm/dynamsoft-javascript-barcode@9.6.21/dist/dbr.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #000;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .logo-topo {
+      width: 100px;
+      height: auto;
+      margin: 30px 0 10px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background-color: #2c2c2c;
+      padding: 30px 20px 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      margin: 20px 10px;
+    }
+
+    .form-container {
+      max-width: 700px;
+      margin: 0 auto;
+      background: #1e1e1e;
+      padding: 25px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .form-container h1,
+    .form-container h2 {
+      text-align: center;
+      color: #fff;
+      margin-bottom: 15px;
+    }
+
+    label {
+      font-size: 14px;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 5px;
+      color: #ccc;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: #2a2a2a;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #43b0ff;
+      box-shadow: 0 0 0 2px rgba(67, 176, 255, 0.25);
+    }
+
+    button {
+      background-color: #673ab7;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #5e35b1;
+    }
+
+    .btn-secundario {
+      background-color: #5f6368;
+    }
+
+    .btn-secundario:hover {
+      background-color: #3c4043;
+    }
+
+    .btn-full {
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .linha-botoes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0 5px;
+    }
+
+    .linha-botoes button {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .login-box {
+      margin-bottom: 15px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 15px;
+    }
+
+    .login-box h2 {
+      margin-bottom: 10px;
+    }
+
+    .logout {
+      text-align: right;
+      margin-bottom: 10px;
+    }
+
+    .logout button {
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+
+    .info-filial {
+      font-size: 13px;
+      color: #bbb;
+      margin-bottom: 10px;
+    }
+
+    .loading {
+      text-align: center;
+      font-style: italic;
+      margin-top: 10px;
+      color: #1a73e8;
+      font-size: 13px;
+    }
+
+    .erro {
+      color: #f97373;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .resumo-nf {
+      background: #252525;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-top: 15px;
+      font-size: 14px;
+      border: 1px solid #3b3b3b;
+    }
+
+    .resumo-nf p {
+      margin: 2px 0;
+    }
+
+    .titulo-itens {
+      margin-top: 18px;
+      margin-bottom: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .titulo-itens span {
+      font-size: 13px;
+      color: #ccc;
+    }
+
+    .lista-itens {
+      margin-top: 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 350px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .item-card {
+      background: #262626;
+      border-radius: 6px;
+      border: 1px solid #3b3b3b;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: border-color 0.2s, background-color 0.2s;
+      font-size: 13px;
+    }
+
+    .item-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .item-ref {
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
+    .item-detalhes {
+      color: #d1d5db;
+    }
+
+    .item-qtd {
+      font-weight: 600;
+    }
+
+    .item-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    .status-badge {
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #374151;
+      color: #e5e7eb;
+    }
+
+    .status-ok {
+      background: #064e3b;
+      color: #bbf7d0;
+    }
+
+    .status-faltando {
+      background: #78350f;
+      color: #fed7aa;
+    }
+
+    .status-passando {
+      background: #7f1d1d;
+      color: #fecaca;
+    }
+
+    .item-card.faltando {
+      border-color: #facc15;
+      background-color: rgba(250, 204, 21, 0.1);
+    }
+
+    .item-card.passando {
+      border-color: #f97373;
+      background-color: rgba(248, 113, 113, 0.08);
+    }
+
+    .status-buttons button {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-faltando {
+      background: #f59e0b;
+      color: #111827;
+    }
+
+    .btn-passando {
+      background: #ef4444;
+      color: #f9fafb;
+    }
+
+    .btn-faltando:hover {
+      background: #d97706;
+    }
+
+    .btn-passando:hover {
+      background: #b91c1c;
+    }
+
+    /* Scanner full-screen */
+    #scanner {
+      width: 100%;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      background-color: rgba(0,0,0,0.8);
+    }
+
+    #scanner video,
+    #scanner canvas {
+      max-width: 90vw;
+      max-height: 70vh;
+    }
+
+    .scanner-info {
+      margin-top: 10px;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .scanner-close {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: #111827;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 13px;
+      color: #ccc;
+      background-color: #2c2c2c;
+      padding: 10px 15px;
+      border-radius: 6px;
+      margin: 10px;
+      max-width: 900px;
+      width: 100%;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px 12px;
+      }
+
+      .form-container {
+        padding: 20px 14px;
+      }
+
+      .linha-botoes {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <img src="logo.png" alt="Logo HS" class="logo-topo" />
+
+  <div class="container">
+    <div class="form-container">
+      <!-- LOGIN FILIAL -->
+      <div id="login-nf" class="login-box">
+        <h2>Login da Filial</h2>
+        <label for="codigo-nf">Código da Filial</label>
+        <input type="text" id="codigo-nf" placeholder="Ex: 293, 488, 287..." />
+        <button class="btn-full" onclick="entrarNF()">
+          <i class="fas fa-door-open"></i> Entrar
+        </button>
+      </div>
+
+      <!-- TELA PRINCIPAL -->
+      <div id="principal-nf" class="hidden">
+        <div class="logout">
+          <button class="btn-secundario" onclick="sairNF()">
+            <i class="fas fa-sign-out-alt"></i> Sair
+          </button>
+        </div>
+
+        <h1>Recebimento de Nota Fiscal</h1>
+        <div class="info-filial" id="info-filial"></div>
+
+        <label for="chave-nf">Chave de Acesso (44 dígitos)</label>
+        <input type="text"
+               id="chave-nf"
+               placeholder="Digite ou leia o código de barras"
+               maxlength="44" />
+
+        <div class="linha-botoes">
+          <button onclick="abrirLeitorNF()">
+            <i class="fas fa-camera"></i> Ler Código de Barras
+          </button>
+          <button onclick="consultarNotaNF()">
+            <i class="fas fa-search"></i> Consultar Nota
+          </button>
+        </div>
+
+        <div id="loading-nf" class="loading hidden">
+          ⏳ Consultando nota fiscal...
+        </div>
+        <div id="erro-nf" class="erro"></div>
+
+        <div id="resumo-nf" class="resumo-nf hidden"></div>
+
+        <div class="titulo-itens hidden" id="titulo-itens">
+          <span>Itens da Nota Fiscal</span>
+          <span id="resumo-itens"></span>
+        </div>
+
+        <div id="lista-itens" class="lista-itens hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scanner Dynamsoft -->
+  <div id="scanner">
+    <button class="scanner-close" onclick="fecharLeitorNF()">
+      <i class="fas fa-times"></i> Fechar
+    </button>
+    <div id="scanner-view"></div>
+    <div class="scanner-info">
+      Aponte a câmera para o código de barras da nota.<br/>
+      Assim que a chave for lida, o leitor será fechado automaticamente.
+    </div>
+  </div>
+
+  <footer>HS Operações © 2025 - Recebimento de Nota Fiscal</footer>
+
+  <script>
+    // Licença Dynamsoft (a nova que você me passou)
+    Dynamsoft.DBR.BarcodeScanner.license =
+      "DLS2eyJoYW5kc2hha2VDb2RlIjoiMTA0MDgyMzg1LVRYbFhaV0pRY205cSIsIm1haW5TZXJ2ZXJVUkwiOiJodHRwczovL21kbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsIm9yZ2FuaXphdGlvbklEIjoiMTA0MDgyMzg1Iiwic3RhbmRieVNlcnZlclVSTCI6Imh0dHBzOi8vc2Rscy5keW5hbXNvZnRvbmxpbmUuY29tIiwiY2hlY2tDb2RlIjoxNzI0OTg5ODA0fQ==";
+
+    const filiaisValidas = ["293", "488", "287", "288", "761"];
+    const nomesFiliais = {
+      "293": "ARTUR",
+      "488": "FLORIANO",
+      "287": "JOTA",
+      "288": "MODA",
+      "761": "PONTO"
+    };
+
+    let filialAtual = null;
+    let scannerInstance = null;
+    let itensAtuais = [];
+
+    // --- LOGIN / LOGOUT ---
+
+    function entrarNF() {
+      const codigo = document.getElementById('codigo-nf').value.trim();
+      if (!codigo || !filiaisValidas.includes(codigo)) {
+        alert("Código de filial inválido. Use: 293, 488, 287, 288 ou 761.");
+        return;
+      }
+
+      filialAtual = codigo;
+      localStorage.setItem('filial_nf', codigo);
+
+      document.getElementById('login-nf').classList.add('hidden');
+      document.getElementById('principal-nf').classList.remove('hidden');
+
+      const nome = nomesFiliais[codigo] || "Desconhecida";
+      document.getElementById('info-filial').textContent =
+        `Filial logada: ${codigo} - ${nome}`;
+    }
+
+    function sairNF() {
+      filialAtual = null;
+      localStorage.removeItem('filial_nf');
+      document.getElementById('codigo-nf').value = '';
+
+      document.getElementById('login-nf').classList.remove('hidden');
+      document.getElementById('principal-nf').classList.add('hidden');
+
+      limparResultados();
+    }
+
+    function limparResultados() {
+      document.getElementById('chave-nf').value = '';
+      document.getElementById('erro-nf').textContent = '';
+      document.getElementById('loading-nf').classList.add('hidden');
+
+      document.getElementById('resumo-nf').classList.add('hidden');
+      document.getElementById('resumo-nf').innerHTML = '';
+
+      document.getElementById('titulo-itens').classList.add('hidden');
+      document.getElementById('lista-itens').classList.add('hidden');
+      document.getElementById('lista-itens').innerHTML = '';
+      document.getElementById('resumo-itens').textContent = '';
+
+      itensAtuais = [];
+    }
+
+    // --- CONSULTA DE NF (FRONT → BACK) ---
+
+    function consultarNotaNF() {
+      const erro = document.getElementById('erro-nf');
+      const loading = document.getElementById('loading-nf');
+      const chaveInput = document.getElementById('chave-nf');
+      const chave = chaveInput.value.trim();
+
+      erro.textContent = '';
+      document.getElementById('resumo-nf').classList.add('hidden');
+      document.getElementById('lista-itens').classList.add('hidden');
+      document.getElementById('titulo-itens').classList.add('hidden');
+
+      if (!filialAtual) {
+        erro.textContent = 'Faça login com o código da filial antes de consultar.';
+        return;
+      }
+
+      if (chave.length !== 44) {
+        erro.textContent = 'A chave de acesso deve ter exatamente 44 dígitos.';
+        return;
+      }
+
+      loading.classList.remove('hidden');
+
+      // Aqui vamos chamar o backend Apps Script
+      // Função que ainda vamos criar no GS: consultarItensNF(filial, chave)
+      google.script.run
+        .withSuccessHandler(respostaNF)
+        .withFailureHandler(function(err) {
+          loading.classList.add('hidden');
+          erro.textContent = 'Erro ao comunicar com o servidor: ' + (err.message || err);
+        })
+        .consultarItensNF(filialAtual, chave);
+    }
+
+    function respostaNF(res) {
+      const erro = document.getElementById('erro-nf');
+      const loading = document.getElementById('loading-nf');
+      loading.classList.add('hidden');
+
+      if (!res) {
+        erro.textContent = 'Resposta vazia do servidor.';
+        return;
+      }
+
+      if (!res.success) {
+        erro.textContent = res.message || 'Não foi possível consultar a nota fiscal.';
+        return;
+      }
+
+      erro.textContent = '';
+
+      const cab = res.cabecalho || {};
+      const itens = res.itens || [];
+
+      // Resumo da NF
+      const resumoDiv = document.getElementById('resumo-nf');
+      resumoDiv.innerHTML = `
+        <p><strong>Filial:</strong> ${cab.filial || filialAtual} (${nomesFiliais[filialAtual] || ''})</p>
+        <p><strong>Número NF:</strong> ${cab.numeroNF || '-'}</p>
+        <p><strong>Chave:</strong> ${cab.chaveAcesso || '-'}</p>
+        <p><strong>Data Emissão:</strong> ${cab.dataEmissao || '-'}</p>
+        <p><strong>Valor Total NF:</strong> ${cab.valorTotalNF || cab.valorTotal || '-'}</p>
+        <p><strong>Quantidade Total:</strong> ${cab.quantidadeTotal || '-'}</p>
+      `;
+      resumoDiv.classList.remove('hidden');
+
+      // Lista de itens
+      itensAtuais = itens.map((item, idx) => ({
+        index: idx,
+        codigo: item.codigo || item.codigoProduto || '',
+        cor: item.cor || item.corProduto || '',
+        tamanho: item.tamanho || '',
+        quantidade: item.quantidade || 0,
+        status: 'OK'
+      }));
+
+      renderizarItens();
+    }
+
+    function renderizarItens() {
+      const listaDiv = document.getElementById('lista-itens');
+      const tituloItens = document.getElementById('titulo-itens');
+      const resumoItensSpan = document.getElementById('resumo-itens');
+
+      listaDiv.innerHTML = '';
+
+      if (!itensAtuais.length) {
+        tituloItens.classList.add('hidden');
+        listaDiv.classList.add('hidden');
+        resumoItensSpan.textContent = '';
+        return;
+      }
+
+      const total = itensAtuais.length;
+      const faltando = itensAtuais.filter(i => i.status === 'FALTANDO').length;
+      const passando = itensAtuais.filter(i => i.status === 'PASSANDO').length;
+
+      resumoItensSpan.textContent =
+        `Total: ${total} | Faltando: ${faltando} | Passando: ${passando}`;
+
+      itensAtuais.forEach((item, idx) => {
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        if (item.status === 'FALTANDO') card.classList.add('faltando');
+        if (item.status === 'PASSANDO') card.classList.add('passando');
+
+        const header = document.createElement('div');
+        header.className = 'item-header';
+
+        const refSpan = document.createElement('span');
+        refSpan.className = 'item-ref';
+        refSpan.textContent = `${item.codigo || '----'} / ${item.cor || '------'}`;
+
+        const tamanhoSpan = document.createElement('span');
+        tamanhoSpan.className = 'item-detalhes';
+        tamanhoSpan.textContent = `Tam: ${item.tamanho || '-'}`;
+
+        const qtdSpan = document.createElement('span');
+        qtdSpan.className = 'item-qtd';
+        qtdSpan.textContent = `Qtd: ${item.quantidade}`;
+
+        header.appendChild(refSpan);
+        header.appendChild(tamanhoSpan);
+        header.appendChild(qtdSpan);
+
+        const statusLinha = document.createElement('div');
+        statusLinha.className = 'item-status';
+
+        const badge = document.createElement('span');
+        badge.className = 'status-badge';
+
+        if (item.status === 'OK') {
+          badge.classList.add('status-ok');
+          badge.textContent = 'STATUS: OK';
+        } else if (item.status === 'FALTANDO') {
+          badge.classList.add('status-faltando');
+          badge.textContent = 'STATUS: MERCADORIA FALTANDO';
+        } else if (item.status === 'PASSANDO') {
+          badge.classList.add('status-passando');
+          badge.textContent = 'STATUS: MERCADORIA PASSANDO';
+        }
+
+        const btns = document.createElement('div');
+        btns.className = 'status-buttons';
+
+        const btnFaltando = document.createElement('button');
+        btnFaltando.className = 'btn-faltando';
+        btnFaltando.type = 'button';
+        btnFaltando.textContent = 'Marcar Faltando';
+        btnFaltando.onclick = function() {
+          alterarStatusItem(idx, 'FALTANDO');
+        };
+
+        const btnPassando = document.createElement('button');
+        btnPassando.className = 'btn-passando';
+        btnPassando.type = 'button';
+        btnPassando.textContent = 'Marcar Passando';
+        btnPassando.onclick = function() {
+          alterarStatusItem(idx, 'PASSANDO');
+        };
+
+        btns.appendChild(btnFaltando);
+        btns.appendChild(btnPassando);
+
+        statusLinha.appendChild(badge);
+        statusLinha.appendChild(btns);
+
+        card.appendChild(header);
+        card.appendChild(statusLinha);
+
+        listaDiv.appendChild(card);
+      });
+
+      tituloItens.classList.remove('hidden');
+      listaDiv.classList.remove('hidden');
+    }
+
+    function alterarStatusItem(index, novoStatus) {
+      const item = itensAtuais[index];
+      if (!item) return;
+
+      // Se clicar de novo no mesmo status, volta pra OK
+      if (item.status === novoStatus) {
+        item.status = 'OK';
+      } else {
+        item.status = novoStatus;
+      }
+      renderizarItens();
+    }
+
+    // --- LEITOR DYNAMSOFT ---
+
+    async function abrirLeitorNF() {
+      const chaveInput = document.getElementById("chave-nf");
+      const scannerDiv = document.getElementById("scanner");
+      const scannerView = document.getElementById("scanner-view");
+
+      if (chaveInput.value.trim() !== '') {
+        alert("Limpe o campo da chave antes de escanear outro código.");
+        return;
+      }
+
+      try {
+        if (scannerInstance) {
+          await scannerInstance.destroyContext();
+          scannerInstance = null;
+        }
+
+        scannerView.innerHTML = '';
+        scannerDiv.style.display = "flex";
+
+        scannerInstance = await Dynamsoft.DBR.BarcodeScanner.createInstance();
+        await scannerInstance.updateRuntimeSettings("speed");
+
+        scannerInstance.onFrameRead = results => {
+          for (let result of results) {
+            const codigo = result.barcodeText || '';
+            if (codigo.length >= 44) {
+              chaveInput.value = codigo.substring(0, 44);
+              fecharLeitorNFInterno();
+              return;
+            }
+          }
+        };
+
+        await scannerInstance.show(scannerView);
+      } catch (ex) {
+        alert("Erro ao iniciar o leitor: " + ex.message);
+        scannerDiv.style.display = "none";
+      }
+    }
+
+    async function fecharLeitorNFInterno() {
+      const scannerDiv = document.getElementById("scanner");
+      try {
+        if (scannerInstance) {
+          await scannerInstance.hide();
+          await scannerInstance.stop();
+          await scannerInstance.destroyContext();
+          scannerInstance = null;
+        }
+      } catch (e) {
+        // só garante que some
+      }
+      scannerDiv.style.display = "none";
+    }
+
+    function fecharLeitorNF() {
+      fecharLeitorNFInterno();
+    }
+
+    // Restaura login se já tiver filial salva
+    window.addEventListener('load', function() {
+      const filialSalva = localStorage.getItem('filial_nf');
+      if (filialSalva && filiaisValidas.includes(filialSalva)) {
+        filialAtual = filialSalva;
+        document.getElementById('login-nf').classList.add('hidden');
+        document.getElementById('principal-nf').classList.remove('hidden');
+        const nome = nomesFiliais[filialSalva] || "Desconhecida";
+        document.getElementById('info-filial').textContent =
+          `Filial logada: ${filialSalva} - ${nome}`;
+      }
+    });
+  </script>
+</body>
+</html>
